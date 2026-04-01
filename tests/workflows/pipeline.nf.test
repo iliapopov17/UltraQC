@@ -1,0 +1,84 @@
+nextflow_workflow {
+
+    name "Test UltraQC pipeline"
+    script "main.nf"
+    workflow "ULTRAQC"
+
+    test("SE samplesheet: FastQC + MultiQC without fastp") {
+        when {
+            params {
+                input     = "${projectDir}/assets/samplesheet_se.csv"
+                outdir    = "${outputDir}"
+                use_fastp = false
+            }
+        }
+        then {
+            assert workflow.success
+            // Raw FastQC outputs in fastqc/raw/ — 1 HTML per SE sample
+            assert path("${outputDir}/fastqc/raw").list().count { it.toFile().name.endsWith(".html") } == 1
+            assert path("${outputDir}/fastqc/raw").list().count { it.toFile().name.endsWith(".zip")  } == 1
+            // Aggregated + per-sample MultiQC
+            assert path("${outputDir}/multiqc/raw/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/per_sample/sample1/raw/multiqc_report.html").exists()
+        }
+    }
+
+    test("SE samplesheet: fastp → FastQC → two MultiQC reports") {
+        when {
+            params {
+                input     = "${projectDir}/assets/samplesheet_se.csv"
+                outdir    = "${outputDir}"
+                use_fastp = true
+            }
+        }
+        then {
+            assert workflow.success
+            // Raw and trimmed FastQC in separate subdirs — 1 HTML per SE sample
+            assert path("${outputDir}/fastqc/raw").list().count      { it.toFile().name.endsWith(".html") } == 1
+            assert path("${outputDir}/fastqc/trimmed").list().count  { it.toFile().name.endsWith(".html") } == 1
+            // Aggregated reports
+            assert path("${outputDir}/multiqc/raw/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/trimmed/multiqc_report.html").exists()
+            // Per-sample reports
+            assert path("${outputDir}/multiqc/per_sample/sample1/raw/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/per_sample/sample1/trimmed/multiqc_report.html").exists()
+        }
+    }
+
+    test("PE samplesheet: FastQC + MultiQC without fastp") {
+        when {
+            params {
+                input     = "${projectDir}/assets/samplesheet_pe.csv"
+                outdir    = "${outputDir}"
+                use_fastp = false
+            }
+        }
+        then {
+            assert workflow.success
+            // PE FastQC: 2 files (R1 + R2) × 1 sample = 2 HTMLs
+            assert path("${outputDir}/fastqc/raw").list().count { it.toFile().name.endsWith(".html") } == 2
+            assert path("${outputDir}/multiqc/raw/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/per_sample/sample1/raw/multiqc_report.html").exists()
+        }
+    }
+
+    test("PE samplesheet: fastp → FastQC → two MultiQC reports") {
+        when {
+            params {
+                input     = "${projectDir}/assets/samplesheet_pe.csv"
+                outdir    = "${outputDir}"
+                use_fastp = true
+            }
+        }
+        then {
+            assert workflow.success
+            // PE FastQC: 2 files (R1 + R2) × 1 sample = 2 HTMLs
+            assert path("${outputDir}/fastqc/raw").list().count     { it.toFile().name.endsWith(".html") } == 2
+            assert path("${outputDir}/fastqc/trimmed").list().count { it.toFile().name.endsWith(".html") } == 2
+            assert path("${outputDir}/multiqc/raw/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/trimmed/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/per_sample/sample1/raw/multiqc_report.html").exists()
+            assert path("${outputDir}/multiqc/per_sample/sample1/trimmed/multiqc_report.html").exists()
+        }
+    }
+}
