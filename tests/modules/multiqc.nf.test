@@ -1,0 +1,32 @@
+nextflow_process {
+
+    name "Test MULTIQC process"
+    script "modules/local/multiqc.nf"
+    process "MULTIQC"
+
+    test("Aggregates FastQC ZIPs into a single HTML report") {
+
+        when {
+            process {
+                """
+                input[0] = 'raw'
+                input[1] = Channel.fromList([
+                    file("${projectDir}/assets/test_data/Sample_1.R1_fastqc.zip"),
+                    file("${projectDir}/assets/test_data/Sample_1.R2_fastqc.zip")
+                ]).collect()
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            // MultiQC produces exactly one HTML report
+            assert process.out.report.size() == 1
+            assert process.out.report[0].contains("multiqc_report.html")
+
+            // MultiQC also produces a data directory
+            assert process.out.data.size() == 1
+        }
+    }
+}
