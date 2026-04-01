@@ -1,0 +1,46 @@
+nextflow_workflow {
+
+    name "Test INPUT_CHECK subworkflow"
+    script "subworkflows/local/input_check.nf"
+    workflow "INPUT_CHECK"
+
+    test("Parses single-end samplesheet correctly") {
+        when {
+            workflow {
+                """
+                input[0] = file("${projectDir}/assets/samplesheet_se.csv")
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.reads.size() == 1
+
+            // meta must flag single_end = true
+            def metas = workflow.out.reads.collect { it[0] }
+            assert metas.every { it.single_end == true }
+        }
+    }
+
+    test("Parses paired-end samplesheet correctly") {
+        when {
+            workflow {
+                """
+                input[0] = file("${projectDir}/assets/samplesheet_pe.csv")
+                """
+            }
+        }
+        then {
+            assert workflow.success
+            assert workflow.out.reads.size() == 1
+
+            // meta must flag single_end = false
+            def metas = workflow.out.reads.collect { it[0] }
+            assert metas.every { it.single_end == false }
+
+            // reads tuple must contain two files
+            def readFiles = workflow.out.reads.collect { it[1] }
+            assert readFiles.every { it.size() == 2 }
+        }
+    }
+}
