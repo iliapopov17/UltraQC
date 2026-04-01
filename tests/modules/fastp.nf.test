@@ -1,0 +1,34 @@
+nextflow_process {
+
+    name "Test FASTP process"
+    script "modules/local/fastp.nf"
+    process "FASTP"
+
+    test("Trims a single-end FASTQ and produces trimmed reads + HTML + JSON") {
+
+        when {
+            process {
+                """
+                input[0] = [
+                    [ id: 'sample1', single_end: true ],
+                    [ file("${projectDir}/assets/test_data/Sample_1.R1.fastq.gz") ]
+                ]
+                """
+            }
+        }
+
+        then {
+            assert process.success
+
+            // Trimmed reads for downstream FastQC
+            assert process.out.reads.size() == 1
+
+            // QC report files
+            assert process.out.html.size() == 1
+            assert process.out.json.size() == 1
+
+            assert process.out.html[0][1].contains("sample1")
+            assert process.out.json[0][1].contains("sample1")
+        }
+    }
+}
