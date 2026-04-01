@@ -1,0 +1,49 @@
+name: UltraQC CI
+
+# Run on every push and on pull requests targeting main
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    name: nf-test
+    runs-on: ubuntu-latest  # Linux x86_64 — no ARM platform warnings
+
+    steps:
+      # 1. Check out the repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Java (Nextflow requires Java >= 11)
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # 3. Install Nextflow
+      - name: Install Nextflow
+        uses: nf-core/setup-nextflow@v2
+        with:
+          version: latest-stable
+
+      # 4. Install nf-test
+      - name: Install nf-test
+        run: |
+          curl -fsSL https://get.nf-test.com | bash
+          sudo mv nf-test /usr/local/bin/
+          nf-test version
+
+      # 5. Pull Docker images up front so test timing is predictable
+      - name: Pull Docker images
+        run: |
+          docker pull quay.io/biocontainers/fastqc:0.12.1--hdfd78af_0
+          docker pull quay.io/biocontainers/fastp:0.23.4--hadf994f_2
+          docker pull quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0
+
+      # 6. Run the full nf-test suite
+      - name: Run nf-test
+        run: nf-test test --profile docker
