@@ -1,0 +1,36 @@
+nextflow_process {
+
+    name "Test FASTQC process"
+    script "modules/local/fastqc.nf"
+    process "FASTQC"
+
+    test("Single-end FASTQ produces HTML and ZIP") {
+
+        when {
+            process {
+                """
+                input[0] = 'raw'
+                input[1] = [
+                    [ id: 'sample1' ],
+                    file("${projectDir}/assets/test_data/Sample_1.R1.fastq.gz")
+                ]
+                """
+            }
+        }
+
+        then {
+            // Process must succeed
+            assert process.success
+
+            // Two output files: HTML report + ZIP archive
+            assert process.out.html.size()  == 1
+            assert process.out.zip.size()   == 1
+
+            // FastQC names output files based on the input filename, not sample ID
+            assert process.out.html[0][1].endsWith("_fastqc.html")
+
+            // ZIP filename follows the same convention
+            assert process.out.zip[0][1].endsWith("_fastqc.zip")
+        }
+    }
+}
